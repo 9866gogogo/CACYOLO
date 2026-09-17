@@ -1,4 +1,4 @@
-"""统计 TwoClass 模型在 auto_annotations test 集上的 GFLOPs、参数量与 FPS。"""
+"""统计 TwoClass 模型在 auto_annotations test 集上的 GFLOPs、参数量与 FPS。."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 import pandas as pd
 import torch
+
 from ultralytics import YOLO
 from ultralytics.utils.torch_utils import get_flops, get_num_params
 
@@ -23,9 +24,7 @@ DEVICE = 0 if torch.cuda.is_available() else "cpu"
 
 MODELS = {
     "TwoClass_YOLO12s": "runs/detect/runs/train/new_TwoClass_YOLO12s/weights/best.pt",
-    "improv_TwoClass_ColorYOLO12s_v2": (
-        "runs/detect/runs/train/new_improv_TwoClass_ColorYOLO12s/weights/best.pt"
-    ),
+    "improv_TwoClass_ColorYOLO12s_v2": ("runs/detect/runs/train/new_improv_TwoClass_ColorYOLO12s/weights/best.pt"),
 }
 
 
@@ -103,9 +102,7 @@ def save_results(rows: list[dict]) -> None:
     stem = "twoclass_model_efficiency_test"
     pd.DataFrame(rows).to_csv(OUTPUT_DIR / f"{stem}.csv", index=False, encoding="utf-8-sig")
     pd.DataFrame(rows).to_excel(OUTPUT_DIR / f"{stem}.xlsx", index=False)
-    (OUTPUT_DIR / f"{stem}.json").write_text(
-        json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    (OUTPUT_DIR / f"{stem}.json").write_text(json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def main():

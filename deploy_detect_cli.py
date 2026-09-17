@@ -1,4 +1,4 @@
-"""水稻白穗检测模型本地化部署（命令行批量推理）。
+"""水稻白穗检测模型本地化部署（命令行批量推理）。.
 
 支持两个二类检测模型（healthy / whitehead）的本地批量推理：
   - base : new_TwoClass_YOLO12s           (标准 YOLO12s 基线)
@@ -45,7 +45,7 @@ IMG_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
 
 
 def resolve_weight(model: str) -> Path:
-    """将模型别名或路径解析为权重文件绝对路径。"""
+    """将模型别名或路径解析为权重文件绝对路径。."""
     if model in MODEL_ZOO:
         weight = ROOT / MODEL_ZOO[model]
     else:
@@ -58,7 +58,7 @@ def resolve_weight(model: str) -> Path:
 
 
 def collect_images(source: Path) -> list[Path]:
-    """收集文件夹（或单张图片）中的所有图片路径。"""
+    """收集文件夹（或单张图片）中的所有图片路径。."""
     if source.is_file():
         return [source] if source.suffix.lower() in IMG_EXTS else []
     if not source.is_dir():
@@ -159,9 +159,7 @@ def main():
     # 保存逐图结果 CSV
     csv_path = output_dir / "detection_results.csv"
     with open(csv_path, "w", newline="", encoding="utf-8-sig") as f:
-        writer = csv.DictWriter(
-            f, fieldnames=["image", "healthy", "whitehead", "total", "whitehead_rate(%)"]
-        )
+        writer = csv.DictWriter(f, fieldnames=["image", "healthy", "whitehead", "total", "whitehead_rate(%)"])
         writer.writeheader()
         writer.writerows(rows)
 

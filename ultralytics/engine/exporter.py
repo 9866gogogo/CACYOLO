@@ -86,8 +86,20 @@ from ultralytics.data import build_dataloader, build_yolo_dataset
 from ultralytics.data.dataset import YOLODataset
 from ultralytics.data.utils import check_cls_dataset, check_det_dataset
 from ultralytics.nn.autobackend import check_class_names, default_class_names
-from ultralytics.nn.modules import C2f, Classify, Detect, RTDETRDecoder, Segment26, SemanticSegment
-from ultralytics.nn.tasks import ClassificationModel, DetectionModel, SegmentationModel, WorldModel
+from ultralytics.nn.modules import (
+    C2f,
+    Classify,
+    Detect,
+    RTDETRDecoder,
+    Segment26,
+    SemanticSegment,
+)
+from ultralytics.nn.tasks import (
+    ClassificationModel,
+    DetectionModel,
+    SegmentationModel,
+    WorldModel,
+)
 from ultralytics.utils import (
     ARM64,
     DEFAULT_CFG,
@@ -385,7 +397,7 @@ def try_export(inner_func):
             return f
         except Exception as e:
             LOGGER.error(f"{prefix} export failure {dt.t:.1f}s: {e}")
-            raise e
+            raise
 
     return outer_func
 
@@ -1041,7 +1053,11 @@ class Exporter:
     def export_coreml(self, prefix=colorstr("CoreML:")):
         """Export YOLO model to CoreML format."""
         mlmodel = self.args.format.lower() == "mlmodel"  # legacy *.mlmodel export format requested
-        from ultralytics.utils.export.coreml import IOSDetectModel, pipeline_coreml, torch2coreml
+        from ultralytics.utils.export.coreml import (
+            IOSDetectModel,
+            pipeline_coreml,
+            torch2coreml,
+        )
 
         # numpy 2.4.x breaks coremltools CoreML export https://github.com/apple/coremltools/issues/2633
         check_requirements(["coremltools>=9.0", "numpy>=1.14.5,<=2.3.5"])
@@ -1495,7 +1511,7 @@ class NMSModel(torch.nn.Module):
 
         preds = self.model(x)
         pred = preds[0] if isinstance(preds, tuple) else preds
-        kwargs = dict(device=pred.device, dtype=pred.dtype)
+        kwargs = {"device": pred.device, "dtype": pred.dtype}
         bs = pred.shape[0]
         pred = pred.transpose(-1, -2)  # shape(1,84,6300) to shape(1,6300,84)
         extra_shape = pred.shape[-1] - (4 + len(self.model.names))  # extras from Segment, OBB, Pose

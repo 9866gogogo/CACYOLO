@@ -1,4 +1,4 @@
-"""统计 runs/train 下各模型在 RicePanicleDemoDataset test 集上的 GFLOPs、参数量与 FPS。"""
+"""统计 runs/train 下各模型在 RicePanicleDemoDataset test 集上的 GFLOPs、参数量与 FPS。."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 import pandas as pd
 import torch
+
 from ultralytics import YOLO
 from ultralytics.utils.torch_utils import get_flops, get_num_params
 
@@ -38,13 +39,13 @@ MODELS = {
 
 
 def count_test_images() -> int:
-    """统计 test 图像数量。"""
+    """统计 test 图像数量。."""
     exts = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
     return sum(1 for p in TEST_IMAGES.iterdir() if p.suffix.lower() in exts)
 
 
 def speed_to_fps(speed: dict) -> tuple[float, float, dict]:
-    """将 val 返回的 speed(ms/img) 转为 FPS 与总延迟。"""
+    """将 val 返回的 speed(ms/img) 转为 FPS 与总延迟。."""
     preprocess = float(speed.get("preprocess", 0.0) or 0.0)
     inference = float(speed.get("inference", 0.0) or 0.0)
     postprocess = float(speed.get("postprocess", 0.0) or 0.0)
@@ -59,7 +60,7 @@ def speed_to_fps(speed: dict) -> tuple[float, float, dict]:
 
 
 def measure_fps_on_test(model: YOLO) -> dict:
-    """在 test 划分上通过 val 统计端到端推理速度。"""
+    """在 test 划分上通过 val 统计端到端推理速度。."""
     metrics = model.val(
         data=str(DATA_YAML),
         split="test",
@@ -75,7 +76,7 @@ def measure_fps_on_test(model: YOLO) -> dict:
 
 
 def benchmark_one(name: str, weight_rel: str, n_images: int) -> dict:
-    """单模型：GFLOPs、参数量、FPS。"""
+    """单模型：GFLOPs、参数量、FPS。."""
     weight = ROOT / weight_rel
     if not weight.exists():
         raise FileNotFoundError(f"权重不存在: {weight}")
@@ -111,7 +112,7 @@ def benchmark_one(name: str, weight_rel: str, n_images: int) -> dict:
 
 
 def save_results(rows: list[dict]) -> None:
-    """增量保存结果，避免长时间运行中断后丢失。"""
+    """增量保存结果，避免长时间运行中断后丢失。."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     df = pd.DataFrame(rows)
     csv_path = OUTPUT_DIR / "model_efficiency_test.csv"

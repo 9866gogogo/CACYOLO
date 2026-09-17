@@ -8,7 +8,7 @@ from copy import deepcopy
 from pathlib import Path
 
 import torch
-import torch.nn as nn
+from torch import nn
 
 from ultralytics.nn.autobackend import check_class_names
 from ultralytics.nn.modules import (
@@ -39,9 +39,9 @@ from ultralytics.nn.modules import (
     C3x,
     CBFuse,
     CBLinear,
+    ChromaDetect,
     ChromaticContrastGate,
     Classify,
-    ChromaDetect,
     ColorGuide,
     ColorPriorBlock,
     ColorStem,
@@ -80,8 +80,23 @@ from ultralytics.nn.modules import (
     YOLOESegment26,
     v10Detect,
 )
-from ultralytics.utils import DEFAULT_CFG_DICT, LOGGER, SAFE_LOAD, SETTINGS, WINDOWS, YAML, colorstr, emojis
-from ultralytics.utils.checks import REMOTE_FILE_PREFIXES, check_file, check_requirements, check_suffix, check_yaml
+from ultralytics.utils import (
+    DEFAULT_CFG_DICT,
+    LOGGER,
+    SAFE_LOAD,
+    SETTINGS,
+    WINDOWS,
+    YAML,
+    colorstr,
+    emojis,
+)
+from ultralytics.utils.checks import (
+    REMOTE_FILE_PREFIXES,
+    check_file,
+    check_requirements,
+    check_suffix,
+    check_yaml,
+)
 from ultralytics.utils.loss import (
     E2ELoss,
     PoseLoss26,
@@ -194,7 +209,9 @@ class BaseModel(torch.nn.Module):
                 if visualize:
                     feature_visualization(x, m.type, m.i, save_dir=visualize)
                 if m.i in embed:
-                    embeddings.append(torch.nn.functional.adaptive_avg_pool2d(x, (1, 1)).squeeze(-1).squeeze(-1))  # flatten
+                    embeddings.append(
+                        torch.nn.functional.adaptive_avg_pool2d(x, (1, 1)).squeeze(-1).squeeze(-1)
+                    )  # flatten
                     if m.i == max_idx:
                         return torch.unbind(torch.cat(embeddings, 1), dim=0)
             return x
@@ -1941,7 +1958,19 @@ def parse_model(d, ch, verbose=True):
             args.extend([reg_max, end2end, [ch[x] for x in f]])
             if m is Segment or m is YOLOESegment or m is Segment26 or m is YOLOESegment26:
                 args[2] = make_divisible(min(args[2], max_channels) * width, 8)
-            if m in {Detect, ChromaDetect, YOLOEDetect, Segment, Segment26, YOLOESegment, YOLOESegment26, Pose, Pose26, OBB, OBB26}:
+            if m in {
+                Detect,
+                ChromaDetect,
+                YOLOEDetect,
+                Segment,
+                Segment26,
+                YOLOESegment,
+                YOLOESegment26,
+                Pose,
+                Pose26,
+                OBB,
+                OBB26,
+            }:
                 m.legacy = legacy
         elif m is SemanticSegment:
             args.append([ch[x] for x in f])  # nc, ch tuple

@@ -1,4 +1,4 @@
-"""YOLO12-Chroma (CA-Head + CAC-Branch) 二类微调。
+"""YOLO12-Chroma (CA-Head + CAC-Branch) 二类微调。.
 
 创新点：类感知色度支路 (Class-Aware Chromatic Branch)
   - backbone / neck 与 YOLO12 完全一致 → 单类 v12s 预训练完整对齐
@@ -24,7 +24,7 @@ CHROMA_EXTRA_MIN = 5_000  # CA-Head 新增参数量下限
 
 
 def verify_chroma_architecture(yolo: YOLO) -> None:
-    """训练前校验 CA-Head 架构。"""
+    """训练前校验 CA-Head 架构。."""
     types = Counter(type(m).__name__ for m in yolo.model.modules())
     n_params = sum(p.numel() for p in yolo.model.parameters())
 
@@ -63,13 +63,13 @@ def main():
         workers=4,
         amp=True,
         optimizer="AdamW",
-        lr0=1e-3,  
+        lr0=1e-3,
         lrf=0.01,
         weight_decay=5e-4,
         cos_lr=True,
         patience=20,
         close_mosaic=20,
-        cls_pw=0.75,  
+        cls_pw=0.75,
         copy_paste=0.1,
         seed=0,
         project="runs/train",

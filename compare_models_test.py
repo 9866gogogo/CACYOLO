@@ -1,4 +1,6 @@
-"""在 auto_annotations 测试集上对比 Baseline YOLO12s 与 CAC-YOLO12 检测性能。"""
+"""在 auto_annotations 测试集上对比 Baseline YOLO12s 与 CAC-YOLO12 检测性能。."""
+
+from __future__ import annotations
 
 import os
 from pathlib import Path
@@ -6,6 +8,7 @@ from pathlib import Path
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 import pandas as pd
+
 from ultralytics import YOLO
 
 # ---------------------------------------------------------------------------
@@ -26,7 +29,7 @@ DEVICE = 0
 
 
 def eval_model(name: str, weight: str) -> dict:
-    """在带标注的 test 集上评估，返回整体与逐类指标。"""
+    """在带标注的 test 集上评估，返回整体与逐类指标。."""
     weight_path = Path(weight)
     if not weight_path.exists():
         raise FileNotFoundError(f"权重不存在: {weight_path}")
@@ -67,7 +70,7 @@ def eval_model(name: str, weight: str) -> dict:
 
 
 def results_to_rows(result: dict) -> list[dict]:
-    """将单次评估结果展平为表格行。"""
+    """将单次评估结果展平为表格行。."""
     rows = []
     base = {"Model": result["model"]}
     for k, v in result["all"].items():
@@ -75,9 +78,7 @@ def results_to_rows(result: dict) -> list[dict]:
 
     for cls_name, cls_row in result["classes"].items():
         for metric in ("Box-P", "Box-R", "mAP50", "mAP50-95"):
-            display = metric.replace("Box-", "").replace("mAP50", "mAP@0.5").replace(
-                "mAP50-95", "mAP@0.5:0.95"
-            )
+            display = metric.replace("Box-", "").replace("mAP50", "mAP@0.5").replace("mAP50-95", "mAP@0.5:0.95")
             rows.append(
                 {
                     **base,
@@ -90,15 +91,15 @@ def results_to_rows(result: dict) -> list[dict]:
 
 
 def print_metrics(result: dict) -> None:
-    """控制台打印指标。"""
+    """控制台打印指标。."""
     a = result["all"]
-    print(f"\n  [Overall]")
+    print("\n  [Overall]")
     print(f"    Precision   : {a['Precision']:.4f}")
     print(f"    Recall      : {a['Recall']:.4f}")
     print(f"    mAP@0.5     : {a['mAP@0.5']:.4f}")
     print(f"    mAP@0.5:0.95: {a['mAP@0.5:0.95']:.4f}")
 
-    print(f"\n  [Per-class]")
+    print("\n  [Per-class]")
     for cls_name, row in result["classes"].items():
         print(
             f"    {cls_name:10s}  P={row['Box-P']:.4f}  R={row['Box-R']:.4f}  "
@@ -110,7 +111,7 @@ def print_metrics(result: dict) -> None:
 
 
 def print_comparison(baseline: dict, improve: dict) -> None:
-    """打印两模型差值。"""
+    """打印两模型差值。."""
     print(f"\n{'=' * 60}")
     print("差值 (CAC_YOLO12_v2 - Baseline_YOLO12s)")
     print(f"{'=' * 60}")
@@ -126,14 +127,11 @@ def print_comparison(baseline: dict, improve: dict) -> None:
         d95 = improve["classes"][cls]["mAP50-95"] - baseline["classes"][cls]["mAP50-95"]
         dr = improve["classes"][cls]["Box-R"] - baseline["classes"][cls]["Box-R"]
         dp = improve["classes"][cls]["Box-P"] - baseline["classes"][cls]["Box-P"]
-        print(
-            f"  {cls:10s}  ΔP={dp:+.4f}  ΔR={dr:+.4f}  "
-            f"ΔmAP@0.5={d50:+.4f}  ΔmAP@0.5:0.95={d95:+.4f}"
-        )
+        print(f"  {cls:10s}  ΔP={dp:+.4f}  ΔR={dr:+.4f}  ΔmAP@0.5={d50:+.4f}  ΔmAP@0.5:0.95={d95:+.4f}")
 
 
 def save_tables(results: list[dict], output_dir: Path) -> None:
-    """保存对比表为 CSV。"""
+    """保存对比表为 CSV。."""
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # 宽表：Overall + 逐类

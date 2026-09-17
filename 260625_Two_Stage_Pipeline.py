@@ -148,12 +148,13 @@
 
 # print("结果保存为 result.jpg")
 
-import os
-import cv2
 import csv
-import shutil
+import os
 import random
+import shutil
 from pathlib import Path
+
+import cv2
 
 from ultralytics import YOLO
 
@@ -197,11 +198,9 @@ dirs = [
     "images/train",
     "images/val",
     "images/test",
-
     "labels/train",
     "labels/val",
     "labels/test",
-
     "visualize/train",
     "visualize/val",
     "visualize/test",
@@ -219,9 +218,7 @@ suffix = [".jpg", ".jpeg", ".png", ".bmp"]
 images = []
 
 for root, _, files in os.walk(INPUT_DIR):
-
     for f in files:
-
         if Path(f).suffix.lower() in suffix:
             images.append(os.path.join(root, f))
 
@@ -250,25 +247,11 @@ print("=" * 50)
 
 csv_path = os.path.join(OUTPUT_DIR, "annotation.csv")
 
-csv_file = open(
-    csv_path,
-    "w",
-    newline="",
-    encoding="utf-8"
-)
+csv_file = open(csv_path, "w", newline="", encoding="utf-8")
 
 writer = csv.writer(csv_file)
 
-writer.writerow([
-    "image",
-    "class",
-    "detector_conf",
-    "classifier_conf",
-    "x1",
-    "y1",
-    "x2",
-    "y2"
-])
+writer.writerow(["image", "class", "detector_conf", "classifier_conf", "x1", "y1", "x2", "y2"])
 
 # =====================================================
 # 统计变量
@@ -284,6 +267,7 @@ filtered_boxes = 0
 # 处理函数
 # =====================================================
 
+
 def process(image_list, mode):
 
     global total_boxes
@@ -292,7 +276,6 @@ def process(image_list, mode):
     global filtered_boxes
 
     for img_path in image_list:
-
         img = cv2.imread(img_path)
 
         if img is None:
@@ -302,11 +285,7 @@ def process(image_list, mode):
 
         vis = img.copy()
 
-        result = detector.predict(
-            source=img,
-            conf=DET_CONF,
-            verbose=False
-        )[0]
+        result = detector.predict(source=img, conf=DET_CONF, verbose=False)[0]
 
         txt_lines = []
 
@@ -317,7 +296,6 @@ def process(image_list, mode):
         det_scores = result.boxes.conf.cpu().numpy()
 
         for box, det_score in zip(boxes, det_scores):
-
             x1, y1, x2, y2 = box.astype(int)
 
             crop = img[y1:y2, x1:x2]
@@ -325,10 +303,7 @@ def process(image_list, mode):
             if crop.size == 0:
                 continue
 
-            cls_result = classifier.predict(
-                source=crop,
-                verbose=False
-            )[0]
+            cls_result = classifier.predict(source=crop, verbose=False)[0]
 
             cls_id = int(cls_result.probs.top1)
             cls_score = float(cls_result.probs.top1conf)
@@ -341,14 +316,12 @@ def process(image_list, mode):
             total_boxes += 1
 
             if cls_id == 0:
-
                 healthy_boxes += 1
 
                 color = (0, 255, 0)
                 cls_name = "Healthy"
 
             else:
-
                 whitehead_boxes += 1
 
                 color = (0, 0, 255)
@@ -360,84 +333,33 @@ def process(image_list, mode):
             bw = (x2 - x1) / w
             bh = (y2 - y1) / h
 
-            txt_lines.append(
-                f"{cls_id} {xc:.6f} {yc:.6f} {bw:.6f} {bh:.6f}"
-            )
+            txt_lines.append(f"{cls_id} {xc:.6f} {yc:.6f} {bw:.6f} {bh:.6f}")
 
             # 保存CSV
-            writer.writerow([
-                os.path.basename(img_path),
-                cls_name,
-                float(det_score),
-                float(cls_score),
-                x1,
-                y1,
-                x2,
-                y2
-            ])
+            writer.writerow([os.path.basename(img_path), cls_name, float(det_score), float(cls_score), x1, y1, x2, y2])
 
             # 可视化
             label = f"{cls_name} {cls_score:.2f}"
 
-            cv2.rectangle(
-                vis,
-                (x1, y1),
-                (x2, y2),
-                color,
-                2
-            )
+            cv2.rectangle(vis, (x1, y1), (x2, y2), color, 2)
 
-            cv2.putText(
-                vis,
-                label,
-                (x1, max(20, y1 - 5)),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.6,
-                color,
-                2
-            )
+            cv2.putText(vis, label, (x1, max(20, y1 - 5)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
         # 保存图片
         img_name = os.path.basename(img_path)
 
-        shutil.copy(
-            img_path,
-            os.path.join(
-                OUTPUT_DIR,
-                "images",
-                mode,
-                img_name
-            )
-        )
+        shutil.copy(img_path, os.path.join(OUTPUT_DIR, "images", mode, img_name))
 
         # 保存可视化
 
-        cv2.imwrite(
-            os.path.join(
-                OUTPUT_DIR,
-                "visualize",
-                mode,
-                img_name
-            ),
-            vis
-        )
+        cv2.imwrite(os.path.join(OUTPUT_DIR, "visualize", mode, img_name), vis)
 
         # 保存txt
 
         txt_name = Path(img_name).stem + ".txt"
 
-        with open(
-            os.path.join(
-                OUTPUT_DIR,
-                "labels",
-                mode,
-                txt_name
-            ),
-            "w"
-        ) as f:
-
-            for line in txt_lines:
-                f.write(line + "\n")
+        with open(os.path.join(OUTPUT_DIR, "labels", mode, txt_name), "w") as f:
+            f.writelines(line + "\n" for line in txt_lines)
 
 
 # =====================================================
@@ -470,15 +392,7 @@ names:
   1: whitehead
 """
 
-with open(
-    os.path.join(
-        OUTPUT_DIR,
-        "dataset.yaml"
-    ),
-    "w",
-    encoding="utf-8"
-) as f:
-
+with open(os.path.join(OUTPUT_DIR, "dataset.yaml"), "w", encoding="utf-8") as f:
     f.write(yaml_text)
 
 # =====================================================

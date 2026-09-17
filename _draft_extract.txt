@@ -1,0 +1,252 @@
+基于弱监督标注与色度增强 YOLOv12 的田间水稻白穗检测
+Abstract：水稻白穗是影响产量的重要病害表型，实现对白穗的准确识别对于田间病害监测和精准农业管理具有重要意义。然而，实际田间采集的稻穗图像普遍存在标注不完整和类别分布不均衡等问题，导致现有目标检测模型对白穗目标的识别能力受限。针对上述问题，本文采用一种渐进式的水稻白穗检测方法，并基于YOLO12s提出了一种类感知色度 YOLO12（CAC-YOLO12)。首先利用单类别稻穗数据进行预训练，学习稳健的目标定位特征；随后结合弱监督自动扩充标注策略构建二分类数据集；最后在保持主干网络和特征融合网络不变的基础上，引入类感知色度分支（CAC-Branch），增强分类分支对白穗色度特征的表征能力，提高对白穗目标的识别性能。实验结果表明，与YOLO12基线模型相比，CAC-YOLO12的mAP@0.5由83.29%提高至84.21%，mAP@0.5:0.95由67.27%提高至69.22%；对白穗类别，Recall由66.47%提升至69.57%，mAP@0.5由73.33%提升至74.81%。结果表明，该方法能够缓解不完全标注和类别不平衡对白穗检测性能的影响，为田间水稻病害智能监测提供了一种新思路。
+Keywords: Rice White Panicle detection; Incomplete annotation; Precision agriculture.
+Introduction
+水稻作为全球重要粮食作物，其稳产增产对保障粮食安全具有重要意义（Andargie et al., 2024）。稻穗直接决定结实率、千粒重及最终产量，抽穗至灌浆期发生穗部病害造成的减产损失远高于营养生长期（Hayashi et al., 2019）。穗颈瘟、细菌性穗枯等病害在高温高湿条件下易集中侵染穗部，其中穗颈瘟导致的白穗是田间评价穗部受害程度最直观的症状（Hayashi et al., 2019; Akram et al., 2024）。随着集约化栽培的发展，穗部病害已成为影响水稻持续高产的重要因素（Savary et al., 2022）。快速、准确监测白穗发生范围和严重程度，对于病害普查、抗病品种筛选、精准植保和产量损失评估具有重要意义。
+传统水稻病害调查主要依赖人工田间巡查，通过经验判断植株形态和颜色异常识别病害（Mukherjee et al., 2025）。该方法存在劳动成本高、效率低、主观性强和难以实现大面积连续监测等不足，难以满足现代农业精准管理需求（Lu et al., 2024）。近年来，机器视觉技术逐渐应用于病害监测，通过图像分割、特征提取及机器学习实现病害自动识别，相较人工调查具有更好的标准化和重复性（Sethy et al., 2020; Patel & Sharaff, 2024）。随着深度学习的发展，卷积神经网络和目标检测模型进一步实现了病害端到端自动识别，并逐渐向轻量化部署方向发展，为田间智能监测提供了新的技术路径（Tasfe et al., 2024; Khanal et al., 2024）。
+相比叶片病害，稻穗具有结构密集、目标尺寸小、背景复杂和遮挡严重等特点，人工统计白穗数量和发病等级更加困难。近年来，无人机遥感结合深度学习已广泛应用于稻穗检测、计数、穗型分析及产量估算，在检测效率和精度方面均优于传统人工方法（Teng et al., 2023; Lu et al., 2024; Guo et al., 2025）。已有研究大多将稻穗作为单一目标开展检测。例如，Zhou等利用改进R-FCN实现无人机影像中的稻穗检测与计数（Zhou et al., 2019）；Wu等和Deng等分别实现了离体稻穗籽粒计数和枝梗谷粒检测（Wu et al., 2019; Deng et al., 2021）；Wu等进一步验证了深度学习在小麦籽粒检测中的有效性（Wu et al., 2020）。近年来，研究学者们基于YOLO系列的模型进行改进，不断提升复杂环境下稻穗检测性能，但其研究重点仍集中于稻穗定位、计数及产量评估，并未将白穗等病害作为独立检测类别（Lan et al., 2024; Qu et al., 2025; Song et al., 2025）。
+与普通稻穗检测相比，白穗检测不仅需要准确定位稻穗，还需进一步区分健康穗和病害穗，属于更加复杂的细粒度目标检测任务。田间环境中，品种、生育期、光照和背景变化使稻穗在颜色、形态和纹理上具有较大差异；无人机影像中的稻穗通常尺度较小，下采样容易导致特征丢失（Tan et al., 2023; Wu et al., 2025）。同时，高密度种植条件下普遍存在遮挡和目标重叠，易造成漏检和定位误差（Sun et al., 2022）。虽然近年来研究通过注意力机制、多尺度特征融合及Transformer检测头等策略提高了复杂环境下稻穗检测性能（Luo et al., 2025; Huang et al., 2026），但这些方法主要针对目标定位，对白穗颜色退化等病害特征关注不足。此外，白穗样本数量远少于健康穗，类别不平衡进一步降低了模型对白穗的识别能力（Tian et al., 2026）。由于白穗与健康穗主要区别体现在局部色泽和纹理变化，而几何形态差异较小，因此模型需要具备更强的细粒度特征表达能力（Wu et al., 2025）。
+另一方面，现有稻穗检测方法普遍依赖大量完整标注数据，而真实田间环境中稻穗密集、遮挡严重，逐实例标注成本高，白穗样本又相对稀缺，导致农业视觉数据普遍存在漏标、类别缺失及标签噪声等问题（Aste et al., 2015）。目前常采用伪标签扩展训练数据，但伪标签误差容易产生确认偏差（confirmation bias），尤其在类别不平衡条件下，模型更容易强化健康穗预测而削弱对白穗的识别能力（Arazo et al., 2020）。此外，噪声标签还会降低深度模型的泛化性能，成为农业视觉应用中的重要挑战（Song et al., 2022）。
+针对上述问题，本文将不完全标注视为田间白穗检测中的现实约束，提出一种基于YOLO12的渐进式水稻白穗检测方法。首先利用单类稻穗数据训练基础检测模型，使模型优先学习复杂田间环境下的稻穗定位能力；随后结合检测模型和分类模型生成二类伪标签，逐步构建包含HealthyPanicle和White Panicle稻穗的白穗病害(WP)检测数据集；最后在YOLO12检测头中引入类感知色度增强模块，在保持主干网络结构稳定的基础上强化白穗颜色特征表达，提高少数类病害目标的识别能力。实验结果表明，该方法能够有效提升White Panicle类别的召回率和检测精度，为复杂田间环境下白穗智能监测提供了一种轻量、高效的技术方案。
+Materials and Methods
+Study site and image acquisition
+内容：
+试验地点、品种、生育期、拍摄设备（相机/无人机/手机）、高度、分辨率、拍摄时间、光照条件、典型干扰（背景、遮挡、密集）
+图/表：
+Fig.2田间场景与样本示例（Healthy Panicle/ White Panicle/遮挡/密集）建议2×3或1×4子图
+2.2 Dataset construction under incomplete annotation
+写什么：
+原始公开数据标注情况：哪些有框、哪些仅有图像、类别分布
+不完全标注的形式化定义（公式或文字）：例如仅单类ricepanicle框，或二类框不完整
+图1 公开水稻数据集：(a)同区域不同生育期;(b)同区域不同拍摄高度(由左至右分别为7m,12m,20m);(c)未分类的其他数据集
+图2 不完全标注的水稻数据集(仅标注White Panicle)
+由于基于公开数据集训练得到的单类稻穗检测模型（Single-Class Detection Model）仅能定位稻穗目标，而无法区分健康穗（Healthy Panicle）和白穗（White Panicle），因此本文进一步利用检测模型对田间图像中的稻穗进行裁剪，并构建用于健康状态判别的二分类数据集。该数据集由公开数据集中的Healthy Panicle样本以及不完全标注数据集中的Healthy Panicle和White Panicle样本共同组成。随后，结合单类检测模型与二分类模型，建立“检测—裁剪—分类—重标注”的伪标注流程，对原始不完全标注数据进行二次标注，最终构建包含Healthy Panicle和White Panicle两类目标的白穗病害检测数据集（WP Dataset）(Fig. 3)，数据集统计信息如表1所示，为后续二类目标检测模型的训练提供数据基础。
+Table 1.Statistical Information of WP Dataset
+Split
+Image Count
+Instance Count
+Healthy
+Whitehead
+Images with Whitehead
+Avg. Instances per Image
+Annotation Method
+Training Set (80%)
+1,561
+88,478
+76,128
+12,350
+1,528
+56.7
+Weakly Supervised Automatic Annotation
+Validation Set (10%)
+195
+13,809
+11,764
+2,045
+194
+70.8
+Manual Annotation
+Testing Set (10%)
+196
+14,622
+12,533
+2,089
+192
+74.6
+Manual Annotation
+Total
+1,952
+116,909
+100,425
+16,484
+1,914
+59.9
+---
+Fig. 3 Sample Illustrations of WP Dataset
+2.3 Progressive learning strategy
+为解决田间水稻白穗检测中存在的不完全标注、类别信息缺失及少数类样本不足等问题，本文提出一种渐进式学习策略（Progressive Learning Strategy），如图3所示将原本直接依赖有限二类标注的检测任务分解为逐步学习过程。首先，利用仅包含稻穗（rice panicle）单一类别标注的数据对YOLOv8/v10/v12 (n/s)以及RT-DETR模型进行预训练，使模型在不涉及类别判别的情况下学习复杂田间环境中的稻穗定位能力与多尺度表征，从而获得稳定的空间先验；随后，对比性能选出最佳模型并基于该单类检测模型对未完整标注数据进行推理，结合裁剪后的稻穗区域输入分类器进行健康状态判别，生成healthy与White Panicle的伪标注数据，并通过检测置信度与分类置信度的联合筛选机制降低噪声标签影响；最后，在构建的二类数据集上进行YOLO12s微调训练，使模型从“目标定位学习”逐步过渡到“细粒度类别判别学习”，同时针对White Panicle样本稀缺问题引入类别权重与数据增强策略，并在检测头中嵌入类感知色度增强分支以强化白穗颜色退化特征表达。通过该渐进式学习过程，模型能够在减少高成本二类标注依赖的同时，有效缓解不完全标注与类别不平衡带来的训练偏置问题。
+Fig 3. Study site and image acquisition
+2.4 Baseline detector
+本文选用YOLO12s作为基准检测器，以验证所提出方法的有效性。并且为充分利用渐进式学习策略获得的定位先验，基准模型采用单类稻穗检测模型的预训练权重作为初始化参数，而非直接使用通用数据集预训练权重，并在构建的Healthy Panicle/White Panicle二类数据集上进行微调训练。除类别配置外，基准模型保持YOLO12s原始网络结构不变，采用与后续改进模型一致的训练数据、超参数及优化策略，以保证实验设置的一致性。因此，基准检测器能够客观反映渐进式学习策略下YOLO12s在水稻白穗检测任务中的基础性能，并作为后续消融实验中性能评估的对照模型。
+2.5 Class-Aware Chromatic YOLO12
+为增强模型对白穗少数类目标的判别能力，同时保持YOLO12s预训练特征的可迁移性，本文提出了一种类感知色度的YOLO12（CAC-YOLO12)。该模型修改检测头和添加作用于检测头的分类分支，不修改backbone、neck及边界框回归分支，在保留原有定位能力的基础上增强对白穗颜色退化特征的表征能力。模型结构如图4所示。
+Fig 4. Structure Diagram of CAC-YOLO12
+白穗与健康穗的主要差异体现在局部色泽变化，而非几何形态（Tian et al., 2025）。因此，本文在P3小目标检测层引入类感知色度分支（Class-Aware Chromatic Branch，CAC-Branch）从而将P3修改为类感知色度增强检测头（Class-aware Chromatic Augmented Head，CA-Head），通过对输入的RGB图像中提取HSV空间的局部色度对比特征，并以分类残差的形式补充至原始分类logit，从而强化对白穗色度特征的响应。
+设输入图像为，P3层分类特征对应的分类输出为。首先，将输入图像缩放至P3特征图尺寸并转换至颜色空间：
+为突出局部色度变化，对特征进行局部平滑并计算局部对比特征：
+考虑到白穗通常表现为饱和度降低、亮度升高，采用通道权重对特征进行加权，增强S、V通道的贡献：
+其中，为通道权重，表示逐元素乘法。加权后的色度特征经共享卷积编码器提取紧凑表示：
+为学习不同类别的色度响应，编码特征分别输入各类别对应的独立预测头，生成类别相关的色度残差：
+其中，表示类别对应的预测头，为可学习的类别尺度因子。最终，将各类别色度残差叠加至P3层原始分类logit，得到最终分类输出：
+其中，为标准检测头输出的分类logit,为所有类别色度残差的组合。
+为避免新增分支破坏预训练权重，所有类别预测头及类别尺度因子均采用零初始化，使训练初期满足(=0)，此时CA-Head与原始YOLO12s检测头保持一致；随着训练进行，模型逐步学习不同类别对应的色度响应，实现对白穗颜色退化特征的自适应增强。由于CA-Head仅作用于分类分支，因此无需修改YOLO12s主体网络即可增强细粒度类别判别能力，同时保持模型原有的定位性能和预训练权重的有效迁移。
+2.6 Experimental setup
+本研究模型训练参数如表1所示。实验平台基于 Ultralytics 8.4.77与PyTorch 2.10（CUDA 12.8）实现，运行于Windows 11系统，RAM为32GB，硬件配置为NVIDIA GeForce RTX 5070 Laptop GPU（8GB显存）。
+Table 1. Model Hyperparameter Configuration
+Parameters
+Single-class 
+Rice Panicle Detector
+Baseline
+CAC-YOLO12
+Training Data
+Single-class dataset
+Two-class dataset
+(WP Datasets)
+Two-class dataset
+(WP Datasets)
+Validation/Testing Annotations
+---
+Manual annotations
+Manual annotations
+Model
+YOLO12s 
+(Standard Detect)
+YOLO12s
+(Standard Detect)
+YOLO12s
+(CAC-Branch + CA-Head)
+Pre-trained Weights
+---
+Single-class
+Rice Panicle Detector
+Single-class
+Rice Panicle Detector
+Input Image Resolution
+640
+640
+640
+Batch Size
+32
+16
+16
+Epochs / Early Stopping Patience
+500 / 100
+100 / 20
+100 / 20
+Optimizer
+SGD
+AdamW
+AdamW
+Initial Learning Rate
+0.01
+1×10⁻³
+5×10⁻⁴
+Learning Rate Decay
+Linear (lrf=0.01)
+Cosine (lrf=0.01)
+Cosine (lrf=0.01)
+Weight Decay
+5×10⁻⁴
+5×10⁻⁴
+5×10⁻⁴
+Classification Loss Weight
+---
+0.75
+0.75
+2.7 Evaluation metrics
+模型性能在人工标注的独立测试集上评估，训练集与验证集不参与最终结果展示。采用边界框精确率（Precision, P）、召回率（Recall, R）、平均精度均值mAP@0.5及mAP@0.5:0.95作为评价指标。其中，精确率和召回率分别定义为：
+其中，、和分别表示真正例（True Positive）、假正例（False Positive）和假负例（False Negative）。
+平均精度（Average Precision，AP）定义为Precision–Recall（PR）曲线下的面积，即：
+平均精度均值（Mean Average Precision，mAP）为所有类别AP的平均值：
+其中，为类别数量，本文中=2。而mAP@0.5 在交并比（Intersection over Union，IoU）阈值为0.5时计算：
+当时，将预测框判定为真正例。mAP@0.5:0.95则在IoU阈值0.50,0.55,…,0.95（步长为0.05）共10个阈值下分别计算AP，并取其平均值：
+实验结果同时报告整体样本以及Healthy Panicle和White Panicle两个类别的检测指标，以综合分析模型整体性能及类别不平衡条件下少数类White Panicle的检测效果。
+3.1 Selection of Single-Class detection and classification models
+我们首先在开源稻穗数据集上训练并评估了YOLO和RT-DETR系列的模型。其在测试集上的结果如表2所示。
+Table 2. Estimation of Single-Class Detection Models
+model
+P
+R
+mAP@0.5
+mAP@0.5:0.95
+rtdetr-l
+0.791
+0.733
+0.774
+0.476
+rtdetr-resnet50
+0.813
+0.753
+0.792
+0.493
+v10n
+0.842
+0.754
+0.82
+0.551
+v10s
+0.846
+0.766
+0.828
+0.567
+v12n
+0.846
+0.763
+0.826
+0.555
+v12s
+0.847
+0.775
+0.831
+0.569
+v8n
+0.848
+0.762
+0.825
+0.554
+v8s
+0.844
+0.775
+0.827
+0.563
+尽管训练数据覆盖不同生育时期和不同拍摄高度，但所有模型均取得了较高的检测精度，表明现有目标检测模型已能够较好地适应复杂田间环境下的稻穗检测任务。如图6所示，YOLO系列整体性能优于RT-DETR，而YOLO12s取得了最佳综合性能，其Precision、Recall、mAP@0.5和mAP@0.5:0.95分别达到0.847、0.775、0.831和0.569。因此，本文选择YOLO12s作为后续渐进式学习策略和CAC-YOLO12设计的基准。
+图6 Comparison of accuracy between single-class detection models
+实验中选择YOLO11s-cls作为分类器，用于WD Datasets的构建，由于分类器不属于本文提出方法的创新内容，选用该模型是为了在YOLO框架下保证实验可复现，同时实现高效的分块推理。如表3所示，该分类器在验证集上的准确率达到0.954。并且后续文中所有评估指标均基于人工标注的验证集与测试集测算，与伪标签质量无关。
+Table 3. Estimation of classification models
+Category
+Precision
+Recall
+Sample Count
+All
+0.954
+0.954
+3291
+Healthy Panicle
+0.962
+0.954
+1791
+White Panicle
+0.945
+0.955
+1500
+3.2 
+Reference
+Savary S, Willocquet L, Castilla N, et al. Whither rice health in the lowlands of Asia: Shifts in production situations, injury profiles, and yields[J]. Plant Pathology, 2022, 71(1): 55-85. https://doi.org/10.1111/ppa.13490
+Hayashi K, Yoshida T, Hayano-Saito Y. Detection of white head symptoms of panicle blast caused by Pyricularia oryzae using cut-flower dye[J]. Plant Methods, 2019, 15(1): 159. https://doi.org/10.1186/s13007-019-0548-z
+AKRAM J, NAEEM N, ASHFAQ M, et al. RICE PANICLE DISEASE AND ITS MANAGEMENT STRATEGIES[J]. Journal of Physical, Biomedical and Biological Sciences, 2025, 2025(1): 35-35. https://doi.org/10.64013/jpbab.v2024i1.35
+Andargie M, Abera M, Tesfaye A, et al. Occurrence, distribution, and management experiences of rice (Oryza sativa L.) major diseases and pests in Ethiopia: a review[J]. Cogent Food & Agriculture, 2024, 10(1): 2300558. https://doi.org/10.1080/23311932.2023.2300558
+Patel B, Sharaff A. A review on rice plant phenotyping traits estimation for disease and growth management using modern ML techniques[J]. Multimedia Tools and Applications, 2024, 83(13): 37771-37793. https://doi.org/10.1007/s11042-023-17098-8
+Sethy P K, Barpanda N K, Rath A K, et al. Image processing techniques for diagnosing rice plant disease: a survey[J]. Procedia Computer Science, 2020, 167: 516-530. https://doi.org/10.1016/j.procs.2020.03.308
+Tasfe M, Nivrito A K M, Al Machot F, et al. Deep learning based models for paddy disease identification and classification: A systematic survey[J]. IEEE Access, 2024, 12: 100862-100891. https://doi.org/10.1109/ACCESS.2024.3419708
+Lu X, Shen Y, Xie J, et al. Phenotyping of panicle number and shape in rice breeding materials based on unmanned aerial vehicle imagery[J]. Plant Phenomics, 2024, 6: 0265. https://doi.org/10.34133/plantphenomics.0265
+Khanal B, Poudel P, Chapagai A, et al. Paddy disease detection and classification using computer vision techniques: A mobile application to detect paddy disease[J]. arXiv preprint arXiv:2412.05996, 2024. https://doi.org/10.34133/plantphenomics.0265
+Teng Z, Chen J, Wang J, et al. Panicle-cloud: An open and AI-powered cloud computing platform for quantifying rice panicles from drone-collected imagery to enable the classification of yield production in rice[J]. Plant Phenomics, 2023, 5: 0105. https://doi.org/10.3390/agronomy13102597
+Guo Y, Zhan W, Zhang Z, et al. FRPNet: A lightweight multi-altitude field rice panicle detection and counting network based on unmanned aerial vehicle images[J]. Agronomy, 2025, 15(6): 1396. https://doi.org/10.3390/agronomy15061396
+Mukherjee R, Ghosh A, Chakraborty C, et al. Rice leaf disease identification and classification using machine learning techniques: A comprehensive review[J]. Engineering Applications of Artificial Intelligence, 2025, 139: 109639. https://doi.org/10.1016/j.engappai.2024.109639
+Song Z, Ban S, Hu D, et al. A lightweight YOLO model for rice panicle detection in fields based on UAV aerial images[J]. Drones, 2024, 9(1): 1. https://doi.org/10.3390/drones16020234
+Deng R, Tao M, Huang X, et al. Automated counting grains on the rice panicle based on deep learning method[J]. Sensors, 2021, 21(1): 281. https://doi.org/10.3390/agronomy11010014
+Lan M, Liu C, Zheng H, et al. Rice-yolo: In-field rice spike detection based on improved yolov5 and drone images[J]. Agronomy, 2024, 14(4): 836. https://doi.org/10.3390/agronomy14040836
+Qu F, Li H, Wang P, et al. Rice spike identification and number prediction in different periods based on UAV imagery and improved YOLOv8[J]. Computers, Materials, & Continua, 2025, 84(2): 3911. https://doi.org/10.32604/cmc.2025.063820
+Wu W, Liu T, Zhou P, et al. Image analysis-based recognition and quantification of grain number per panicle in rice[J]. Plant Methods, 2019, 15(1): 122. https://doi.org/10.1186/s13007-019-0510-0
+Wei W U, Rui L I, Chen C, et al. Detection and enumeration of wheat grains based on a deep learning method under various scenarios and scales[J]. Journal of integrative agriculture, 2020, 19(8): 1998-2008. https://doi.org/10.1016/S2095-3119(19)62803-0
+Zhou C, Ye H, Hu J, et al. Automated counting of rice panicle by applying deep learning model to images from unmanned aerial vehicle platform[J]. Sensors, 2019, 19(14): 3106. https://doi.org/10.3390/s19143106
+Tian X, Wei J, Gao Z, et al. YOLOv9-SCRep: A lightweight instance segmentation and counting model for dense rice panicle images[J]. Information Processing in Agriculture, 2025. https://doi.org/10.1016/j.inpa.2025.11.004
+Luo Y, Li X, Bai B, et al. A field rice panicle detection model based on improved YOLOv11x[J]. Frontiers in Plant Science, 2025, 16: 1656505. https://doi.org/10.3389/fpls.2025.1656505
+Wu H, Guan M, Chen J, et al. OE-YOLO: an efficientNet-based YOLO network for rice panicle detection[J]. Plants, 2025, 14(9): 1370. https://doi.org/10.3390/plants14091370
+Huang D, Chen Z, Zhuang J, et al. DRPU-YOLO11: A Multi-Scale Model for Detecting Rice Panicles in UAV Images with Complex Infield Background[J]. Agriculture, 2026, 16(2): 234. https://doi.org/10.3390/agriculture16020234
+Sun B, Zhou W, Zhu S, et al. Universal detection of curved rice panicles in complex environments using aerial images and improved YOLOv4 model[J]. Frontiers in plant science, 2022, 13: 1021398. https://doi.org/10.3389/fpls.2022.1021398
+Tan S, Lu H, Yu J, et al. In-field rice panicles detection and growth stages recognition based on RiceRes2Net[J]. Computers and electronics in agriculture, 2023, 206: 107704. https://doi.org/10.1016/j.compag.2023.107704
+Song H J, Kim M, Park D, et al. Learning from noisy labels with deep neural networks: A survey[J]. IEEE Transactions on Neural Networks and Learning Systems, 2023, 34(11): 8135-8153. https://doi.org/10.1109/TNNLS.2022.3152527
+Aste M, Boninsegna M, Freno A, et al. Techniques for dealing with incomplete data: a tutorial and survey[J]. Pattern Analysis and Applications, 2015, 18(1): 1-29. https://doi.org/10.1007/s10044-014-0412-y
+Arazo E, Ortego D, Albert P, et al. Pseudo-labeling and confirmation bias in deep semi-supervised learning[C]//2020 International joint conference on neural networks (IJCNN). IEEE, 2020: 1-8. https://arxiv.org/abs/1908.02983
+Tan J L, Tanra M, Mukhlisin M, et al. A Comparative Analysis of Different Color Spaces for Paddy Maturity Assessment Using Drone Imagery[J]. Malaysian Journal of Fundamental and Applied Sciences, 2025, 21(3): 2045-2056. https://doi.org/10.11113/mjfas.v21n3.3875

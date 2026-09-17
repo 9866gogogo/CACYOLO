@@ -71,17 +71,19 @@
 
 
 import os
+
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 from ultralytics import YOLO
 
+
 def main():
     path_list = [
-        'pretrain_cls_weights/yolov8n-cls.pt',
-        'pretrain_cls_weights/yolov8s-cls.pt',
-        'pretrain_cls_weights/yolo11n-cls.pt',
-        'pretrain_cls_weights/yolo11s-cls.pt',
-        'pretrain_cls_weights/yolov12n-cls.pt',
-        'pretrain_cls_weights/yolov12s-cls.pt',
+        "pretrain_cls_weights/yolov8n-cls.pt",
+        "pretrain_cls_weights/yolov8s-cls.pt",
+        "pretrain_cls_weights/yolo11n-cls.pt",
+        "pretrain_cls_weights/yolo11s-cls.pt",
+        "pretrain_cls_weights/yolov12n-cls.pt",
+        "pretrain_cls_weights/yolov12s-cls.pt",
     ]
     for path in path_list:
         model = YOLO(path)
@@ -100,11 +102,12 @@ def main():
             pretrained=True,
             optimizer="auto",
             patience=20,
-            seed=42
+            seed=42,
         )
 
         print("训练完成")
         print("结果目录：", results.save_dir)
+
 
 if __name__ == "__main__":
     main()

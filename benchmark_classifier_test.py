@@ -1,4 +1,4 @@
-"""评估 runs/classify/runs/classify 下二分类模型在 classifier_datas test 集上的指标。"""
+"""评估 runs/classify/runs/classify 下二分类模型在 classifier_datas test 集上的指标。."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 import numpy as np
 import pandas as pd
 import torch
+
 from ultralytics import YOLO
 from ultralytics.utils.torch_utils import get_flops, get_num_params
 
@@ -38,7 +39,7 @@ MODEL_DISPLAY = {
 
 
 def resolve_device() -> str | int:
-    """选择推理设备，CUDA 不可用时静默回退 CPU。"""
+    """选择推理设备，CUDA 不可用时静默回退 CPU。."""
     return 0 if torch.cuda.is_available() else "cpu"
 
 
@@ -46,7 +47,7 @@ DEVICE = resolve_device()
 
 
 def discover_models() -> dict[str, Path]:
-    """扫描分类训练目录，收集 best.pt 权重。"""
+    """扫描分类训练目录，收集 best.pt 权重。."""
     models: dict[str, Path] = {}
     if not MODEL_ROOT.is_dir():
         raise FileNotFoundError(f"未找到模型目录: {MODEL_ROOT}")
@@ -64,11 +65,7 @@ def discover_models() -> dict[str, Path]:
 def count_test_images() -> int:
     exts = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
     return sum(
-        1
-        for cls_dir in TEST_DIR.iterdir()
-        if cls_dir.is_dir()
-        for p in cls_dir.iterdir()
-        if p.suffix.lower() in exts
+        1 for cls_dir in TEST_DIR.iterdir() if cls_dir.is_dir() for p in cls_dir.iterdir() if p.suffix.lower() in exts
     )
 
 
@@ -86,7 +83,7 @@ def _synchronize(device: torch.device) -> None:
 
 
 def _sigma_clip(data: np.ndarray, sigma: float = 2.0, max_iters: int = 3) -> np.ndarray:
-    """剔除偏离均值超过 sigma 的异常试次。"""
+    """剔除偏离均值超过 sigma 的异常试次。."""
     data = np.asarray(data, dtype=float)
     for _ in range(max_iters):
         mean, std = data.mean(), data.std()
@@ -109,7 +106,7 @@ def measure_stable_fps(
     iters: int = FPS_ITERS,
     trials: int = FPS_TRIALS,
 ) -> tuple[float, float, float]:
-    """用假数据测纯推理 FPS，返回 (中位FPS, 中位延迟ms, 延迟标准差ms)。
+    """用假数据测纯推理 FPS，返回 (中位FPS, 中位延迟ms, 延迟标准差ms)。.
 
     不走 val() 的 preprocess/磁盘 I/O；整段计时摊薄 Python 开销，多次试次取中位数。
     """
@@ -145,10 +142,9 @@ def measure_stable_fps(
 
 
 def metrics_from_confusion(matrix: np.ndarray, class_names: dict, top1: float | None = None) -> dict:
-    """根据混淆矩阵计算宏平均 Precision / Recall / F1。
+    """根据混淆矩阵计算宏平均 Precision / Recall / F1。.
 
-    Ultralytics 分类验证的混淆矩阵索引为 matrix[预测类, 真实类]；默认按 detect 任务
-    初始化时尺寸为 (nc+1)x(nc+1)，需截取前 nc 类，避免 background 行/列拉低宏平均。
+    Ultralytics 分类验证的混淆矩阵索引为 matrix[预测类, 真实类]；默认按 detect 任务 初始化时尺寸为 (nc+1)x(nc+1)，需截取前 nc 类，避免 background 行/列拉低宏平均。
     """
     nc = len(class_names)
     matrix = np.asarray(matrix[:nc, :nc], dtype=float)

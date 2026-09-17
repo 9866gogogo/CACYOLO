@@ -36,9 +36,9 @@
 #     main()
 
 import os
+
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 from ultralytics import YOLO
-
 
 
 def main():
@@ -55,7 +55,7 @@ def main():
         imgsz=640,
         batch=16,
         device=0,
-        workers=4, 
+        workers=4,
         amp=True,
         optimizer="AdamW",
         lr0=1e-3,
@@ -73,20 +73,12 @@ def main():
         exist_ok=True,
         save=True,
         save_period=10,
-        verbose=True
+        verbose=True,
     )
-
-
 
     print("训练结束")
     print(results.save_dir)
 
 
-
-
-
 if __name__ == "__main__":
-
     main()
-
-

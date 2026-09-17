@@ -1,5 +1,5 @@
 """使用 Baseline(YOLO12s) 与 改进模型(CAC-YOLO12/ColorYOLO12s_v2) 分别对
-test 集图像进行推理标注，并挑选出改进模型相比 Baseline 明显提升的图像用于论文对比。
+test 集图像进行推理标注，并挑选出改进模型相比 Baseline 明显提升的图像用于论文对比。.
 
 输出目录 runs/compare_test/annotate_compare/ 下包含:
   baseline_YOLO12s/          Baseline 逐图标注结果
@@ -17,6 +17,7 @@ import cv2
 import numpy as np
 import pandas as pd
 from PIL import Image
+
 from ultralytics import YOLO
 
 # ---------------------------------------------------------------------------
@@ -34,31 +35,31 @@ BASELINE_KEY = "baseline_YOLO12s"
 IMPROVED_KEY = "improved_ColorYOLO12s_v2"
 
 OUTPUT_DIR = Path("runs/compare_test/annotate_compare")
-CONF = 0.25          # 置信度阈值
-NMS_IOU = 0.5        # 预测 NMS IoU
-MATCH_IOU = 0.5      # 与 GT 匹配的 IoU 阈值
+CONF = 0.25  # 置信度阈值
+NMS_IOU = 0.5  # 预测 NMS IoU
+MATCH_IOU = 0.5  # 与 GT 匹配的 IoU 阈值
 DEVICE = 0
-MIN_GT = 5           # 挑选对比图时要求 GT 目标数不少于该值(避免选到近乎空图)
+MIN_GT = 5  # 挑选对比图时要求 GT 目标数不少于该值(避免选到近乎空图)
 TOP_K = 3
-DPI = 350            # 输出图像的 DPI
+DPI = 350  # 输出图像的 DPI
 
 # 画框颜色 (BGR)
-COLOR_GT = (0, 255, 0)        # 绿: 真值
-COLOR_HEALTHY = (0, 200, 255) # 橙黄: healthy 预测
-COLOR_WHITE = (0, 0, 255)     # 红: whitehead 预测
+COLOR_GT = (0, 255, 0)  # 绿: 真值
+COLOR_HEALTHY = (0, 200, 255)  # 橙黄: healthy 预测
+COLOR_WHITE = (0, 0, 255)  # 红: whitehead 预测
 
 
 # ---------------------------------------------------------------------------
 # 工具函数
 # ---------------------------------------------------------------------------
 def save_image(path: Path, bgr: np.ndarray, dpi: int = DPI) -> None:
-    """以指定 DPI 保存图像(BGR->RGB), 将 DPI 写入文件元数据。"""
+    """以指定 DPI 保存图像(BGR->RGB), 将 DPI 写入文件元数据。."""
     rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
     Image.fromarray(rgb).save(str(path), dpi=(dpi, dpi))
 
 
 def load_gt(label_path: Path, w: int, h: int) -> np.ndarray:
-    """读取 YOLO 归一化标签, 返回 [N,5] -> (cls, x1, y1, x2, y2) 像素坐标。"""
+    """读取 YOLO 归一化标签, 返回 [N,5] -> (cls, x1, y1, x2, y2) 像素坐标。."""
     if not label_path.exists():
         return np.zeros((0, 5), dtype=np.float32)
     rows = []
@@ -78,7 +79,7 @@ def load_gt(label_path: Path, w: int, h: int) -> np.ndarray:
 
 
 def iou_matrix(a: np.ndarray, b: np.ndarray) -> np.ndarray:
-    """计算两组框的 IoU 矩阵, a:[N,4] b:[M,4] (x1,y1,x2,y2)。"""
+    """计算两组框的 IoU 矩阵, a:[N,4] b:[M,4] (x1,y1,x2,y2)。."""
     if len(a) == 0 or len(b) == 0:
         return np.zeros((len(a), len(b)), dtype=np.float32)
     area_a = (a[:, 2] - a[:, 0]) * (a[:, 3] - a[:, 1])
@@ -92,7 +93,7 @@ def iou_matrix(a: np.ndarray, b: np.ndarray) -> np.ndarray:
 
 
 def match_metrics(gt: np.ndarray, pred_boxes: np.ndarray, pred_cls: np.ndarray) -> dict:
-    """按类别做 IoU 贪心匹配, 统计整体及 whitehead 的 TP/FP/FN/F1。"""
+    """按类别做 IoU 贪心匹配, 统计整体及 whitehead 的 TP/FP/FN/F1。."""
     stats = {}
     for scope, cls_filter in (("all", None), ("whitehead", 1)):
         if cls_filter is None:
@@ -126,14 +127,19 @@ def match_metrics(gt: np.ndarray, pred_boxes: np.ndarray, pred_cls: np.ndarray) 
         recall = tp / (tp + fn) if (tp + fn) else 0.0
         f1 = 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
         stats[scope] = {
-            "gt": len(g), "tp": tp, "fp": fp, "fn": fn,
-            "precision": precision, "recall": recall, "f1": f1,
+            "gt": len(g),
+            "tp": tp,
+            "fp": fp,
+            "fn": fn,
+            "precision": precision,
+            "recall": recall,
+            "f1": f1,
         }
     return stats
 
 
 def draw_boxes(img: np.ndarray, boxes: np.ndarray, classes: np.ndarray) -> np.ndarray:
-    """在图像副本上按类别着色绘制检测框(healthy/whitehead 分色)。"""
+    """在图像副本上按类别着色绘制检测框(healthy/whitehead 分色)。."""
     out = img.copy()
     for i in range(len(boxes)):
         x1, y1, x2, y2 = boxes[i].astype(int)
@@ -153,8 +159,7 @@ def main():
     top_dir = OUTPUT_DIR / "top3_improvement"
     top_dir.mkdir(parents=True, exist_ok=True)
 
-    images = sorted([p for p in TEST_IMAGES.iterdir()
-                     if p.suffix.lower() in (".jpg", ".jpeg", ".png", ".bmp")])
+    images = sorted([p for p in TEST_IMAGES.iterdir() if p.suffix.lower() in (".jpg", ".jpeg", ".png", ".bmp")])
     print(f"测试图像数量: {len(images)}")
 
     # 缓存每个模型对每张图的预测(框/类别/置信度)
@@ -169,8 +174,11 @@ def main():
 
         results = model.predict(
             source=[str(p) for p in images],
-            conf=CONF, iou=NMS_IOU, device=DEVICE,
-            verbose=False, stream=True,
+            conf=CONF,
+            iou=NMS_IOU,
+            device=DEVICE,
+            verbose=False,
+            stream=True,
         )
         for img_path, res in zip(images, results):
             annotated = res.plot()  # BGR ndarray, 标准 YOLO 风格
@@ -183,9 +191,7 @@ def main():
                     b.conf.cpu().numpy(),
                 )
             else:
-                preds[key][img_path.name] = (
-                    np.zeros((0, 4)), np.zeros((0,), int), np.zeros((0,))
-                )
+                preds[key][img_path.name] = (np.zeros((0, 4)), np.zeros((0,), int), np.zeros((0,)))
         print(f"  已标注 {len(images)} 张 -> {OUTPUT_DIR / key}")
 
     # 逐图计算指标与提升量
@@ -202,21 +208,23 @@ def main():
         m_base = match_metrics(gt, bb, bc)
         m_imp = match_metrics(gt, ib, ic)
 
-        rows.append({
-            "image": name,
-            "gt_all": m_base["all"]["gt"],
-            "gt_whitehead": m_base["whitehead"]["gt"],
-            "base_f1": m_base["all"]["f1"],
-            "imp_f1": m_imp["all"]["f1"],
-            "delta_f1": m_imp["all"]["f1"] - m_base["all"]["f1"],
-            "base_wh_f1": m_base["whitehead"]["f1"],
-            "imp_wh_f1": m_imp["whitehead"]["f1"],
-            "delta_wh_f1": m_imp["whitehead"]["f1"] - m_base["whitehead"]["f1"],
-            "base_fn": m_base["all"]["fn"],
-            "imp_fn": m_imp["all"]["fn"],
-            "base_fp": m_base["all"]["fp"],
-            "imp_fp": m_imp["all"]["fp"],
-        })
+        rows.append(
+            {
+                "image": name,
+                "gt_all": m_base["all"]["gt"],
+                "gt_whitehead": m_base["whitehead"]["gt"],
+                "base_f1": m_base["all"]["f1"],
+                "imp_f1": m_imp["all"]["f1"],
+                "delta_f1": m_imp["all"]["f1"] - m_base["all"]["f1"],
+                "base_wh_f1": m_base["whitehead"]["f1"],
+                "imp_wh_f1": m_imp["whitehead"]["f1"],
+                "delta_wh_f1": m_imp["whitehead"]["f1"] - m_base["whitehead"]["f1"],
+                "base_fn": m_base["all"]["fn"],
+                "imp_fn": m_imp["all"]["fn"],
+                "base_fp": m_base["all"]["fp"],
+                "imp_fp": m_imp["all"]["fp"],
+            }
+        )
 
     df = pd.DataFrame(rows)
     csv_path = OUTPUT_DIR / "per_image_metrics.csv"
@@ -233,9 +241,11 @@ def main():
 
     print(f"\n{'=' * 60}\n明显提升 Top{TOP_K}:")
     for _, r in top.iterrows():
-        print(f"  {r['image']:24s}  F1 {r['base_f1']:.3f}->{r['imp_f1']:.3f} "
-              f"(Δ{r['delta_f1']:+.3f})  漏检 {int(r['base_fn'])}->{int(r['imp_fn'])} "
-              f"误检 {int(r['base_fp'])}->{int(r['imp_fp'])}")
+        print(
+            f"  {r['image']:24s}  F1 {r['base_f1']:.3f}->{r['imp_f1']:.3f} "
+            f"(Δ{r['delta_f1']:+.3f})  漏检 {int(r['base_fn'])}->{int(r['imp_fn'])} "
+            f"误检 {int(r['base_fp'])}->{int(r['imp_fp'])}"
+        )
 
     # 生成三联对比图: GT | Baseline | Improved
     for rank, (_, r) in enumerate(top.iterrows(), 1):

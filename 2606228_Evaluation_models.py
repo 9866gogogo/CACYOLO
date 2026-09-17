@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import os
 from pathlib import Path
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 import pandas as pd
+
 from ultralytics import YOLO
 
 DATA_YAML = "datasets/new_auto_annotations/dataset.yaml"
@@ -16,7 +19,7 @@ CLASS_NAMES = ["healthy", "whitehead", "background"]
 
 
 def eval_one(name: str, path: str, run_name: str) -> dict:
-    """在 test 集上评估单个模型。"""
+    """在 test 集上评估单个模型。."""
     print(f"\n>>> {name}: {path}")
     metrics = YOLO(path).val(
         data=DATA_YAML,
@@ -48,7 +51,7 @@ def eval_one(name: str, path: str, run_name: str) -> dict:
 
 
 def print_result(res: dict) -> None:
-    """打印整体与逐类指标。"""
+    """打印整体与逐类指标。."""
     a = res["all"]
     print(f"  all       P={a['Box-P']:.4f}  R={a['Box-R']:.4f}  mAP50={a['mAP50']:.4f}  mAP50-95={a['mAP50-95']:.4f}")
     for cls, row in res["classes"].items():
@@ -61,7 +64,7 @@ def print_result(res: dict) -> None:
 
 
 def print_confusion_matrix(res: dict) -> None:
-    """打印并保存 test 集混淆矩阵。"""
+    """打印并保存 test 集混淆矩阵。."""
     matrix = res.get("confusion_matrix")
     if matrix is None:
         print("  未读取到混淆矩阵。")
@@ -78,10 +81,8 @@ def print_confusion_matrix(res: dict) -> None:
 
 
 def paper_rows_from_cm(name: str, matrix) -> list[dict]:
-    """
-    由混淆矩阵生成论文用统计行。
-    Ultralytics: rows=Predicted, columns=True。
-    Correctly detected / Misclassified as other class / Missed as background。
+    """由混淆矩阵生成论文用统计行。 Ultralytics: rows=Predicted, columns=True。 Correctly detected / Misclassified as other class /
+    Missed as background。.
     """
     m = matrix.astype(int)
     # 前景类索引: 0=healthy, 1=whitehead；2=background
@@ -101,7 +102,7 @@ def paper_rows_from_cm(name: str, matrix) -> list[dict]:
 
 
 def print_paper_table(results: list[dict]) -> None:
-    """打印并保存论文格式混淆统计表。"""
+    """打印并保存论文格式混淆统计表。."""
     rows = []
     for res in results:
         rows.extend(paper_rows_from_cm(res["name"], res["confusion_matrix"]))

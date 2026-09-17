@@ -4,8 +4,8 @@
 from __future__ import annotations
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
 from ultralytics.utils.torch_utils import fuse_conv_and_bn
 
@@ -460,13 +460,13 @@ class GhostBottleneck(nn.Module):
 
 
 def _init_depthwise_avg(conv: nn.Conv2d) -> None:
-    """将 depthwise 卷积初始化为局部均值滤波，保证训练初期稳定。"""
+    """将 depthwise 卷积初始化为局部均值滤波，保证训练初期稳定。."""
     k = conv.kernel_size[0]
     nn.init.constant_(conv.weight, 1.0 / (k * k))
 
 
 def _rgb_to_hsv(rgb: torch.Tensor) -> torch.Tensor:
-    """可微 RGB→HSV，输入/输出数值范围均为 [0, 1]。"""
+    """可微 RGB→HSV，输入/输出数值范围均为 [0, 1]。."""
     r, g, b = rgb[:, 0:1], rgb[:, 1:2], rgb[:, 2:3]
     maxc = torch.max(rgb, dim=1, keepdim=True).values
     minc = torch.min(rgb, dim=1, keepdim=True).values
@@ -485,7 +485,7 @@ def _rgb_to_hsv(rgb: torch.Tensor) -> torch.Tensor:
 
 
 class ColorGuide:
-    """全局 RGB 输入缓存，供 ColorStem / RG-CCG / P3ColorEnhance 读取原始图像色度。"""
+    """全局 RGB 输入缓存，供 ColorStem / RG-CCG / P3ColorEnhance 读取原始图像色度。."""
 
     _rgb: torch.Tensor | None = None
 
@@ -503,10 +503,9 @@ class ColorGuide:
 
 
 class ColorStem(Conv):
-    """输入级色度增强 Stem：继承 Conv 以完整加载预训练 conv0，零初始化 HSV 残差分支。
+    """输入级色度增强 Stem：继承 Conv 以完整加载预训练 conv0，零初始化 HSV 残差分支。.
 
-    设计动机：白穗与健康穗的判别始于原始 RGB 的 H/S/V 差异，在 stem 层显式注入 HSV 局部对比，
-    且不破坏预训练权重（hsv_enhance 零初始化 → 初始行为等价于标准 Conv）。
+    设计动机：白穗与健康穗的判别始于原始 RGB 的 H/S/V 差异，在 stem 层显式注入 HSV 局部对比， 且不破坏预训练权重（hsv_enhance 零初始化 → 初始行为等价于标准 Conv）。
     """
 
     def __init__(self, c1: int, c2: int, k: int = 3, s: int = 2):
@@ -527,7 +526,7 @@ class ColorStem(Conv):
 
 
 class P3ColorEnhance(nn.Module):
-    """P3 小目标色度增强：在最高分辨率检测特征上融合 RGB 的 H/S/V 局部对比 + 双尺度空间卷积。
+    """P3 小目标色度增强：在最高分辨率检测特征上融合 RGB 的 H/S/V 局部对比 + 双尺度空间卷积。.
 
     scale 零初始化，训练初期为恒等映射；专用于 whitehead 等小目标所在的 P3 分支。
     """
@@ -569,7 +568,7 @@ class P3ColorEnhance(nn.Module):
 
 
 class ColorPriorBlock(nn.Module):
-    """浅层颜色先验模块：在第一层卷积后提取可学习伪色度，并做局部色度对比增强。
+    """浅层颜色先验模块：在第一层卷积后提取可学习伪色度，并做局部色度对比增强。.
 
     设计要点：
     - 3 通道伪色度投影，近似可学习的 L/a/b 或 RGB 色度分解
@@ -604,10 +603,9 @@ class ColorPriorBlock(nn.Module):
 
 
 class ChromaticContrastGate(nn.Module):
-    """RGB 引导的空间-色度对比门控 (RG-CCG v3)。
+    """RGB 引导的空间-色度对比门控 (RG-CCG v3)。.
 
-    在 Bottleneck 内使用：融合特征局部对比 + 完整 H/S/V 局部色度对比（来自 ColorGuide）。
-    rgb_scale 零初始化，不破坏预训练特征。
+    在 Bottleneck 内使用：融合特征局部对比 + 完整 H/S/V 局部色度对比（来自 ColorGuide）。 rgb_scale 零初始化，不破坏预训练特征。
     """
 
     def __init__(self, channels: int, reduction: int = 16):
@@ -643,7 +641,7 @@ class ChromaticContrastGate(nn.Module):
         )
 
     def _rgb_hsv_contrast(self, x: torch.Tensor) -> torch.Tensor:
-        """下采样 RGB 至特征图尺度，提取 H/S/V 局部对比。"""
+        """下采样 RGB 至特征图尺度，提取 H/S/V 局部对比。."""
         rgb = ColorGuide.get()
         if rgb is None:
             return torch.zeros(x.shape[0], 3, x.shape[2], x.shape[3], device=x.device, dtype=x.dtype)

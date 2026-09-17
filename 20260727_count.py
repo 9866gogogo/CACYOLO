@@ -3,7 +3,7 @@ from collections import Counter
 
 # ---------------- 配置参数 ----------------
 # 替换为你的 .txt 标注文件所在的文件夹路径
-folder_path = r"datasets\RicePanicleDemoDataset\labels\val"  
+folder_path = r"datasets\RicePanicleDemoDataset\labels\val"
 # ------------------------------------------
 
 # 初始化统计器
@@ -14,24 +14,24 @@ files_with_boxes = 0
 
 # 遍历文件夹下的所有 .txt 文件
 for filename in os.listdir(folder_path):
-    if filename.endswith('.txt'):
+    if filename.endswith(".txt"):
         total_files += 1
         file_path = os.path.join(folder_path, filename)
-        
+
         has_box = False
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line:
                     continue  # 跳过空行
-                
+
                 parts = line.split()
                 if len(parts) >= 2:  # YOLO格式通常包含：class_id x_center y_center width height
                     class_id = parts[0]
                     class_counts[class_id] += 1
                     total_boxes += 1
                     has_box = True
-        
+
         if has_box:
             files_with_boxes += 1
 
